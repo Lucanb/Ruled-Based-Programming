@@ -1,34 +1,39 @@
 import tkinter as tk
 from tkinter import simpledialog
+from tkinter import messagebox
 import numpy as np
 import time
 import rule_engine
 
+def count_ceels(matrix):
+    vii = 0
+    morti = 0
+    for el in matrix:
+        for item in el:
+            if item == 1:
+                vii = vii + 1
+            else:
+                morti = morti + 1 
+    return morti, vii
+        
 def count_neighbor_values(matrix, x, y):
     num_zeros = 0
     num_ones = 0
-    height = len(matrix[0])
-    width = len(matrix)
+    height = len(matrix)
+    width = len(matrix[0])
 
-    min_x = max(0, x - 1)
-    max_x = min(width - 1, x + 1)
-    min_y = max(0, y - 1)
-    max_y = min(height - 1, y + 1)
-
-    for i in range(min_y, max_y + 1):
-        for j in range(min_x, max_x + 1):
-            if (i, j) != (y, x):
+    for i in range(max(0, x - 1), min(x + 2, height)):
+        for j in range(max(0, y - 1), min(y + 2, width)):
+            if (i, j) != (x, y):
                 if matrix[i][j] == 0:
                     num_zeros += 1
                 else:
                     num_ones += 1
-
-    if matrix[x,y] == 1:
-        eu = 1
-    else:   
-        eu = 0
+                    
+    eu = 1 if matrix[x, y] == 1 else 0
 
     return num_zeros, num_ones, eu
+
 
 class GameOfLife:
     def __init__(self, master, width=20, height=20, cell_size=10):
@@ -73,6 +78,19 @@ class GameOfLife:
             self.draw_board()
             self.update_info_labels()
 
+    def verify_condition(self):
+        celule_vii = rule_engine.Rule(
+            'vii >= 3'
+        )
+        dictionar2 = dict()
+        morti, vii =  count_ceels(self.board)
+        dictionar2["morti"] = morti
+        dictionar2["vii"] = vii
+        if not celule_vii.matches(dictionar2):
+            return False
+        else:
+            return True
+
     def next_generation(self):
         moare1 = rule_engine.Rule(
             'vii < 2 and eu == 1' 
@@ -91,7 +109,7 @@ class GameOfLife:
         dictionar = dict()
         for i in range(height):
             for j in range(width):
-                zeros, ones, eu = count_neighbor_values(new_board, i, j)
+                zeros, ones, eu = count_neighbor_values(self.board, i, j)
                 dictionar["vii"] = ones
                 dictionar["morti"] = zeros
                 dictionar["eu"] = eu
@@ -109,12 +127,21 @@ class GameOfLife:
             self.run_game()
         else:
             self.running = False
+    def reset(self):
+        self.running = False 
+        self.board = np.zeros((self.height, self.width), dtype=int)
+        self.draw_board()
+        self.update_info_labels()
+
 
     def run_game(self):
-        while self.running:
-            self.next_generation()
-            self.master.update()
-            time.sleep(0.2)
+        if self.verify_condition():
+            while self.running:
+                self.next_generation()
+                self.master.update()
+                time.sleep(0.2)
+        else:
+            print("Mai putin de 3 celule vii")
 
     def create_menu(self):
         menubar = tk.Menu(self.master)
@@ -135,6 +162,28 @@ class GameOfLife:
         random_generate_menu = tk.Menu(menubar, tearoff=0)
         random_generate_menu.add_command(label="Random Generate", command=self.get_random_input)
         menubar.add_cascade(label="Random Generate", menu=random_generate_menu)
+
+        Explanation_menu = tk.Menu(menubar, tearoff=0)
+        Explanation_menu.add_command(label="Explanation", command=self.show_explanation)
+        menubar.add_cascade(label="Explanation", menu=Explanation_menu)
+
+    def show_explanation(self):
+        explanation_text = """
+    Game of Life Explanation
+    The Game of Life is not your typical computer game. It is a cellular automaton, and was invented by Cambridge mathematician John Conway.
+
+    This game became widely known when it was mentioned in an article published by Scientific American in 1970. It consists of a grid of cells which, based on a few mathematical rules, can live, die or multiply. Depending on the initial conditions, the cells form various patterns throughout the course of the game.
+
+    Rules
+    For a space that is populated:
+    - Each cell with one or no neighbors dies, as if by solitude.
+    - Each cell with four or more neighbors dies, as if by overpopulation.
+    - Each cell with two or three neighbors survives.
+
+    For a space that is empty or unpopulated:
+    - Each cell with three neighbors becomes populated.
+    """
+        messagebox.showinfo("Explanation", explanation_text)
 
     def get_random_input(self):
         num_live_cells = simpledialog.askinteger("Input", "Enter the number of live cells:", parent=self.master)
@@ -185,6 +234,8 @@ if __name__ == "__main__":
     game = GameOfLife(root)
 
     start_button = tk.Button(root, text="Start/Stop", command=game.start_stop)
+    reset_button = tk.Button(root, text="Reset", command=game.reset)
     start_button.pack()
+    reset_button.pack()
 
     root.mainloop()
