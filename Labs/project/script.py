@@ -35,13 +35,17 @@ def count_neighbor_values(matrix, x, y):
     return num_zeros, num_ones, eu
 
 
+
+
 class GameOfLife:
-    def __init__(self, master, width=20, height=20, cell_size=10):
+    def __init__(self, master, width=20, height=20, cell_size=30):
         self.master = master
         self.width = width
         self.height = height
         self.cell_size = cell_size
-        self.canvas = tk.Canvas(master, width=width*cell_size, height=height*cell_size)
+        canvas_width = width * cell_size
+        canvas_height = height * cell_size
+        self.canvas = tk.Canvas(master, width=canvas_width, height=canvas_height)
         self.canvas.pack()
         self.board = np.zeros((height, width), dtype=int)
         self.rects = []
@@ -51,6 +55,18 @@ class GameOfLife:
         self.create_info_labels()
         self.update_info_labels()
         self.canvas.bind("<Button-1>", self.toggle_cell_state)
+
+        control_frame = tk.Frame(master)
+        control_frame.pack(side='bottom', fill='x', expand=True)
+
+        self.next_button = tk.Button(control_frame, text="Next Step", command=self.next_generation)
+        self.next_button.pack(side='left', padx=10, pady=10)
+        self.start_button = tk.Button(control_frame, text="Start/Stop", command=self.start_stop)
+        self.start_button.pack(side='left', padx=10, pady=10)
+        self.reset_button = tk.Button(control_frame, text="Reset", command=self.reset)
+        self.reset_button.pack(side='left', padx=10, pady=10)
+        master.geometry(f"{canvas_width+20}x{canvas_height+150}")
+
 
     def draw_board(self):
         self.canvas.delete("all")
@@ -127,6 +143,7 @@ class GameOfLife:
             self.run_game()
         else:
             self.running = False
+
     def reset(self):
         self.running = False 
         self.board = np.zeros((self.height, self.width), dtype=int)
@@ -155,8 +172,8 @@ class GameOfLife:
 
         resolution_menu = tk.Menu(menubar, tearoff=0)
         resolution_menu.add_command(label="800x600", command=lambda: self.set_resolution(800, 600))
-        resolution_menu.add_command(label="1200x800", command=lambda: self.set_resolution(1200, 800))
-        resolution_menu.add_command(label="1600x1200", command=lambda: self.set_resolution(1600, 1200))
+        resolution_menu.add_command(label="1024x768", command=lambda: self.set_resolution(1024, 768))  # More standard resolution
+        resolution_menu.add_command(label="1280x720", command=lambda: self.set_resolution(1280, 720))  # HD resolution
         menubar.add_cascade(label="Set Resolution", menu=resolution_menu)
 
         random_generate_menu = tk.Menu(menubar, tearoff=0)
@@ -166,6 +183,15 @@ class GameOfLife:
         Explanation_menu = tk.Menu(menubar, tearoff=0)
         Explanation_menu.add_command(label="Explanation", command=self.show_explanation)
         menubar.add_cascade(label="Explanation", menu=Explanation_menu)
+
+    def set_resolution(self, width, height):
+        self.master.geometry(f"{width}x{height + 50}")  # Adding extra space for buttons
+        new_cell_size = min(width // self.width, (height - 50) // self.height)  # Adjust canvas height calculation for buttons
+        self.cell_size = new_cell_size
+        self.canvas.config(width=self.width * new_cell_size, height=self.height * new_cell_size)
+        self.draw_board()
+        self.update_info_labels()
+
 
     def show_explanation(self):
         explanation_text = """
@@ -202,13 +228,6 @@ class GameOfLife:
         self.draw_board()
         self.update_info_labels()
 
-    def set_resolution(self, width, height):
-        self.master.geometry(f"{width}x{height}")
-        self.canvas.config(width=width, height=height)
-        self.cell_size = min(width // self.width, height // self.height)
-        self.draw_board()
-        self.update_info_labels()
-
     def create_info_labels(self):
         self.live_label = tk.Label(self.master, text="Live cells: 0")
         self.live_label.pack()
@@ -232,10 +251,6 @@ class GameOfLife:
 if __name__ == "__main__":
     root = tk.Tk()
     game = GameOfLife(root)
-
-    start_button = tk.Button(root, text="Start/Stop", command=game.start_stop)
-    reset_button = tk.Button(root, text="Reset", command=game.reset)
-    start_button.pack()
-    reset_button.pack()
+    root.mainloop()
 
     root.mainloop()
