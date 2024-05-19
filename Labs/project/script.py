@@ -22,8 +22,13 @@ def count_neighbor_values(matrix, x, y):
     height = len(matrix)
     width = len(matrix[0])
 
-    for i in range(max(0, x - 1), min(x + 2, height)):
-        for j in range(max(0, y - 1), min(y + 2, width)):
+    h_min = max(0, x - 1)
+    h_max = min(x + 2, height)
+    w_min = max(0, y - 1)
+    w_max = min(y + 2, width)
+
+    for i in range(h_min, h_max):
+        for j in range(w_min, w_max):
             if (i, j) != (x, y):
                 if matrix[i][j] == 0:
                     num_zeros += 1
@@ -38,25 +43,25 @@ def count_neighbor_values(matrix, x, y):
 
 
 class GameOfLife:
-    def __init__(self, master, width=20, height=20, cell_size=30):
-        self.master = master
-        self.width = width
-        self.height = height
+    def __init__(self, window, w=20, h=20, cell_size=30):
+        self.window = window
+        self.width = w
+        self.height = h
         self.cell_size = cell_size
-        canvas_width = width * cell_size
-        canvas_height = height * cell_size
-        self.canvas = tk.Canvas(master, width=canvas_width, height=canvas_height)
+        board_width = w * cell_size
+        board_height = h * cell_size
+        self.canvas = tk.Canvas(window, width=board_width, height=board_height)
         self.canvas.pack()
-        self.board = np.zeros((height, width), dtype=int)
+        self.board = np.zeros((h, w), dtype=int)
         self.rects = []
         self.running = False
         self.draw_board()
         self.create_menu()
         self.create_info_labels()
         self.update_info_labels()
-        self.canvas.bind("<Button-1>", self.toggle_cell_state)
+        self.canvas.bind("<Button-1>", self.modify_cell)
 
-        control_frame = tk.Frame(master)
+        control_frame = tk.Frame(window)
         control_frame.pack(side='bottom', fill='x', expand=True)
 
         self.next_button = tk.Button(control_frame, text="Next Step", command=self.next_generation)
@@ -65,32 +70,35 @@ class GameOfLife:
         self.start_button.pack(side='left', padx=10, pady=10)
         self.reset_button = tk.Button(control_frame, text="Reset", command=self.reset)
         self.reset_button.pack(side='left', padx=10, pady=10)
-        master.geometry(f"{canvas_width+20}x{canvas_height+150}")
+        window.geometry(f"{board_width+20}x{board_height+150}")
 
 
     def draw_board(self):
         self.canvas.delete("all")
         self.rects = []
-        for y in range(self.height):
+        for cell1 in range(self.height):
             row = []
-            for x in range(self.width):
-                if self.board[y][x] == 1:
-                    rect = self.canvas.create_rectangle(x*self.cell_size, y*self.cell_size,
-                                                        (x+1)*self.cell_size, (y+1)*self.cell_size,
+            for cell2 in range(self.width):
+                if self.board[cell1][cell2] == 1:
+                    rect = self.canvas.create_rectangle(cell2*self.cell_size, cell1*self.cell_size,
+                                                        (cell2+1)*self.cell_size, (cell1+1)*self.cell_size,
                                                         fill="black")
                     row.append(rect)
                 else:
-                    rect = self.canvas.create_rectangle(x*self.cell_size, y*self.cell_size,
-                                                        (x+1)*self.cell_size, (y+1)*self.cell_size,
+                    rect = self.canvas.create_rectangle(cell2*self.cell_size, cell1*self.cell_size,
+                                                        (cell2+1)*self.cell_size, (cell1+1)*self.cell_size,
                                                         fill="white")
                     row.append(rect)
             self.rects.append(row)
 
-    def toggle_cell_state(self, event):
+    def modify_cell(self, event):
         if not self.running:
             x = event.x // self.cell_size
             y = event.y // self.cell_size
-            self.board[y][x] = 1 if self.board[y][x] == 0 else 0
+            if self.board[y][x] != 1:
+                self.board[y][x] = 1
+            else:
+                self.board[y][x] = 0
             self.draw_board()
             self.update_info_labels()
 
@@ -155,51 +163,37 @@ class GameOfLife:
         if self.verify_condition():
             while self.running:
                 self.next_generation()
-                self.master.update()
+                self.window.update()
                 time.sleep(0.2)
         else:
             print("Mai putin de 3 celule vii")
 
     def create_menu(self):
-        menubar = tk.Menu(self.master)
-        self.master.config(menu=menubar)
+        main_menu = tk.Menu(self.window)
+        self.window.config(menu=main_menu)
 
-        dim_menu = tk.Menu(menubar, tearoff=0)
-        dim_menu.add_command(label="20x20", command=lambda: self.set_dimensions(20, 20))
-        dim_menu.add_command(label="30x30", command=lambda: self.set_dimensions(30, 30))
-        dim_menu.add_command(label="40x40", command=lambda: self.set_dimensions(40, 40))
-        menubar.add_cascade(label="Set Dimensions", menu=dim_menu)
+        size_menu = tk.Menu(main_menu, tearoff=0)
+        size_menu.add_command(label="20x20", command=lambda: self.modify_dimensions(20, 20))
+        size_menu.add_command(label="30x30", command=lambda: self.modify_dimensions(30, 30))
+        size_menu.add_command(label="40x40", command=lambda: self.modify_dimensions(40, 40))
+        main_menu.add_cascade(label="Set Dimensions", menu=size_menu)
 
-        resolution_menu = tk.Menu(menubar, tearoff=0)
-        resolution_menu.add_command(label="800x600", command=lambda: self.set_resolution(800, 600))
-        resolution_menu.add_command(label="1024x768", command=lambda: self.set_resolution(1024, 768))  # More standard resolution
-        resolution_menu.add_command(label="1280x720", command=lambda: self.set_resolution(1280, 720))  # HD resolution
-        menubar.add_cascade(label="Set Resolution", menu=resolution_menu)
+        generate_menu = tk.Menu(main_menu, tearoff=0)
+        generate_menu.add_command(label="Random Generate", command=self.get_random_input)
+        main_menu.add_cascade(label="Random Generate", menu=generate_menu)
 
-        random_generate_menu = tk.Menu(menubar, tearoff=0)
-        random_generate_menu.add_command(label="Random Generate", command=self.get_random_input)
-        menubar.add_cascade(label="Random Generate", menu=random_generate_menu)
+        info_menu = tk.Menu(main_menu, tearoff=0)
+        info_menu.add_command(label="Explanation", command=self.explanation)
+        main_menu.add_cascade(label="Explanation", menu=info_menu)
 
-        Explanation_menu = tk.Menu(menubar, tearoff=0)
-        Explanation_menu.add_command(label="Explanation", command=self.show_explanation)
-        menubar.add_cascade(label="Explanation", menu=Explanation_menu)
-
-    def set_resolution(self, width, height):
-        self.master.geometry(f"{width}x{height + 50}")  # Adding extra space for buttons
-        new_cell_size = min(width // self.width, (height - 50) // self.height)  # Adjust canvas height calculation for buttons
-        self.cell_size = new_cell_size
-        self.canvas.config(width=self.width * new_cell_size, height=self.height * new_cell_size)
-        self.draw_board()
-        self.update_info_labels()
-
-
-    def show_explanation(self):
+    def explanation(self):
         explanation_text = """
     Game of Life Explanation
-    The Game of Life is not your typical computer game. It is a cellular automaton, and was invented by Cambridge mathematician John Conway.
+    The Game of Life is an self played computer game invented by the mathematician John Conway.
 
-    This game became widely known when it was mentioned in an article published by Scientific American in 1970. It consists of a grid of cells which, based on a few mathematical rules, can live, die or multiply. Depending on the initial conditions, the cells form various patterns throughout the course of the game.
-
+    It consists of a table with cells which can multiply, die or live, depending of a series of mathematical rules.
+    Depending on the initial conditions, the cells form various patterns throughout the course of the game.
+    
     Rules
     For a space that is populated:
     - Each cell with one or no neighbors dies, as if by solitude.
@@ -212,16 +206,16 @@ class GameOfLife:
         messagebox.showinfo("Explanation", explanation_text)
 
     def get_random_input(self):
-        num_live_cells = simpledialog.askinteger("Input", "Enter the number of live cells:", parent=self.master)
+        num_live_cells = simpledialog.askinteger("Input", "Enter the number of live cells:", parent=self.window)
         if num_live_cells is not None:
             self.random_generate(num_live_cells)
 
-    def random_generate(self, num_live_cells):
-        max_live_cells = self.width * self.height
-        num_live_cells = min(num_live_cells, max_live_cells)
-        indices = np.random.choice(max_live_cells, num_live_cells, replace=False)
+    def random_generate(self, number_live_cells):
+        max_alive = self.width * self.height
+        number_live_cells = min(number_live_cells, max_alive)
+        rand = np.random.choice(max_alive, number_live_cells, replace=False)
         self.board = np.zeros((self.height, self.width), dtype=int)
-        for index in indices:
+        for index in rand:
             x = index % self.width
             y = index // self.width
             self.board[y][x] = 1
@@ -229,9 +223,9 @@ class GameOfLife:
         self.update_info_labels()
 
     def create_info_labels(self):
-        self.live_label = tk.Label(self.master, text="Live cells: 0")
+        self.live_label = tk.Label(self.window, text="Live cells: 0")
         self.live_label.pack()
-        self.dead_label = tk.Label(self.master, text="Dead cells: 0")
+        self.dead_label = tk.Label(self.window, text="Dead cells: 0")
         self.dead_label.pack()
 
     def update_info_labels(self):
@@ -240,10 +234,16 @@ class GameOfLife:
         self.live_label.config(text=f"Live cells: {live_count}")
         self.dead_label.config(text=f"Dead cells: {dead_count}")
 
-    def set_dimensions(self, width, height):
+    def modify_dimensions(self, width, height):
         self.width = width
         self.height = height
         self.board = np.zeros((height, width), dtype=int)
+        if width == 20:
+            self.cell_size = 30
+        elif width == 30:
+            self.cell_size = 20
+        elif width == 40:
+            self.cell_size = 15
         self.canvas.config(width=width*self.cell_size, height=height*self.cell_size)
         self.draw_board()
         self.update_info_labels()
